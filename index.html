@@ -1,1 +1,115 @@
-テスト
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>フリーキックゲーム進化版</title>
+<style>
+  body { margin:0; background:#2e7d32; color:white; text-align:center; }
+  canvas { background:#4caf50; display:block; margin:20px auto; border:3px solid white; }
+</style>
+</head>
+<body>
+<h1>⚽ フリーキックゲーム（ブリッツカーブ）</h1>
+<p>ドラッグでシュート＋横移動でカーブ！</p>
+<canvas id="game" width="800" height="400"></canvas>
+<div>スコア: <span id="score">0</span></div>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+let ball = { x:100, y:200, r:10, vx:0, vy:0, spin:0, moving:false };
+let goal = { x:700, y:120, w:80, h:160 };
+let keeper = { x:730, y:180, w:20, h:60, dir:1 };
+let score = 0;
+
+let dragging=false, start=null, curvePower=0;
+
+canvas.addEventListener("mousedown", e=>{
+  if(!ball.moving){ dragging=true; start={x:e.offsetX,y:e.offsetY}; }
+});
+
+canvas.addEventListener("mousemove", e=>{
+  if(dragging){ curvePower = (e.offsetX - start.x)*0.05; }
+});
+
+canvas.addEventListener("mouseup", e=>{
+  if(dragging){
+    dragging=false;
+    let dx=start.x-e.offsetX;
+    let dy=start.y-e.offsetY;
+    ball.vx=dx*0.12;
+    ball.vy=dy*0.12;
+    ball.spin=curvePower; // ←ブリッツカーブ
+    ball.moving=true;
+  }
+});
+
+function update(){
+  if(ball.moving){
+    ball.vx += ball.spin; // カーブ影響
+    ball.x += ball.vx;
+    ball.y += ball.vy;
+
+    ball.vx *= 0.98;
+    ball.vy *= 0.98;
+    ball.spin *= 0.95; // スピン減衰
+
+    // キーパー移動
+    keeper.y += keeper.dir*2;
+    if(keeper.y<goal.y || keeper.y+keeper.w>goal.y+goal.h) keeper.dir*=-1;
+
+    // キーパー当たり判定
+    if(ball.x > keeper.x && ball.x < keeper.x+keeper.w &&
+       ball.y > keeper.y && ball.y < keeper.y+keeper.h){
+      resetBall();
+    }
+
+    // ゴール判定
+    if(ball.x>goal.x && ball.x<goal.x+goal.w &&
+       ball.y>goal.y && ball.y<goal.y+goal.h){
+      score++;
+      document.getElementById("score").textContent=score;
+      resetBall();
+    }
+
+    if(Math.abs(ball.vx)<0.1 && Math.abs(ball.vy)<0.1) resetBall();
+  }
+}
+
+function resetBall(){
+  ball.x=100; ball.y=200; ball.vx=0; ball.vy=0; ball.spin=0; ball.moving=false;
+}
+
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // ゴール
+  ctx.fillStyle="white";
+  ctx.fillRect(goal.x,goal.y,goal.w,goal.h);
+
+  // キーパー
+  ctx.fillStyle="red";
+  ctx.fillRect(keeper.x,keeper.y,keeper.w,keeper.h);
+
+  // ボール
+  ctx.beginPath();
+  ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);
+  ctx.fillStyle="black";
+  ctx.fill();
+
+  // ドラッグ表示
+  if(dragging){
+    ctx.beginPath();
+    ctx.moveTo(start.x,start.y);
+    ctx.lineTo(ball.x,ball.y);
+    ctx.strokeStyle="yellow";
+    ctx.stroke();
+  }
+}
+
+function loop(){ update(); draw(); requestAnimationFrame(loop); }
+loop();
+</script>
+</body>
+</html>
